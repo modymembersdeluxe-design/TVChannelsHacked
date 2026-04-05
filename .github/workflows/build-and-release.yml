@@ -6,6 +6,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -26,25 +29,36 @@ jobs:
       - name: Build Release
         run: msbuild TVChannelsHacked.csproj /t:Build /p:Configuration=Release
 
-      - name: Pack Release Zip
+      - name: Pack Release + Checksum
         shell: pwsh
         run: |
-          $version = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME } else { 'manual' }
+          $version = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME } else { 'manual-' + $env:GITHUB_RUN_NUMBER }
           $outDir = "release"
           New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+
           $zipPath = Join-Path $outDir ("TVChannelsHacked-" + $version + ".zip")
           Compress-Archive -Path "bin/Release/net48/*" -DestinationPath $zipPath -Force
-          "ZIP_PATH=$zipPath" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Upload build artifact
+          $hashPath = $zipPath + ".sha256"
+          $hash = Get-FileHash -Path $zipPath -Algorithm SHA256
+          "$($hash.Hash)  $([System.IO.Path]::GetFileName($zipPath))" | Set-Content -Path $hashPath -NoNewline
+
+          "ZIP_PATH=$zipPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "HASH_PATH=$hashPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: TVChannelsHacked-release
-          path: ${{ env.ZIP_PATH }}
+          path: |
+            ${{ env.ZIP_PATH }}
+            ${{ env.HASH_PATH }}
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.ZIP_PATH }}
+          files: |
+            ${{ env.ZIP_PATH }}
+            ${{ env.HASH_PATH }}
           generate_release_notes: true

@@ -1,5 +1,6 @@
 param(
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,10 +21,15 @@ if (-not (Test-Path $outputPath)) {
 $releaseDir = Join-Path $PSScriptRoot "..\release"
 New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
 
-$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$zipName = "TVChannelsHacked-$timestamp.zip"
+$resolvedVersion = if ([string]::IsNullOrWhiteSpace($Version)) { Get-Date -Format "yyyyMMdd-HHmmss" } else { $Version }
+$zipName = "TVChannelsHacked-$resolvedVersion.zip"
 $zipPath = Join-Path $releaseDir $zipName
 
 Compress-Archive -Path (Join-Path $outputPath "*") -DestinationPath $zipPath -Force
 
+$hash = Get-FileHash -Path $zipPath -Algorithm SHA256
+$hashPath = "$zipPath.sha256"
+"$($hash.Hash)  $zipName" | Set-Content -Path $hashPath -NoNewline
+
 Write-Host "Release package created: $zipPath" -ForegroundColor Green
+Write-Host "SHA256 file created: $hashPath" -ForegroundColor Green

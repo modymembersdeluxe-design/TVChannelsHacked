@@ -13,7 +13,11 @@ namespace TVChannelsHacked
         public string IncidentType { get; set; } = string.Empty;
         public string Summary { get; set; } = string.Empty;
         public List<string> SourceVideos { get; set; } = new List<string>();
+        public List<string> SourceAudioTracks { get; set; } = new List<string>();
+        public List<string> ShowCuts { get; set; } = new List<string>();
         public List<string> ComingNext { get; set; } = new List<string>();
+        public bool IsComingNextHijack { get; set; }
+        public DateTime? ScheduledBlockTimeUtc { get; set; }
 
         public string DisplayTitle => $"{ChannelName} ({Country})";
     }
